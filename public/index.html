@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WealthLens — Automation Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0a0f1a;--bg2:#111827;--bg3:#1f2937;--border:#2d3748;--text:#f1f5f9;--muted:#94a3b8;--accent:#e8b44b;--green:#10b981;--red:#ef4444;--blue:#3b82f6;--radius:10px;--shadow:0 4px 24px rgba(0,0,0,.4)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button{cursor:pointer;font-family:inherit}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#0a0f1a 0%,#111827 100%)}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:2.5rem;width:360px;text-align:center;box-shadow:var(--shadow)}
+.login-logo{font-size:2rem;font-weight:700;color:var(--accent);margin-bottom:.25rem}
+.login-sub{font-size:.875rem;color:var(--muted);margin-bottom:2rem}
+.login-card input{width:100%;padding:.75rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:1rem;margin-bottom:1rem;outline:none}
+.login-card input:focus{border-color:var(--accent)}
+.btn-primary{width:100%;padding:.75rem;background:var(--accent);color:#0a0f1a;border:none;border-radius:var(--radius);font-size:1rem;font-weight:600}
+.login-error{color:var(--red);font-size:.875rem;margin-top:.5rem}
+.default-pw{font-size:.8rem;color:var(--muted);margin-top:1rem;padding:.5rem;background:var(--bg3);border-radius:6px}
+#app{display:none;min-height:100vh;flex-direction:column}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:1.25rem;font-weight:700;color:var(--accent);flex:1}
+.topbar-status{font-size:.8rem;padding:4px 10px;border-radius:20px;background:var(--bg3);color:var(--muted)}
+.topbar-status.running{background:rgba(16,185,129,.15);color:var(--green)}
+.topbar-status.active{background:rgba(232,180,75,.15);color:var(--accent)}
+.topbar-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;font-size:.85rem}
+.layout{display:flex;flex:1}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:1.25rem .75rem;flex-shrink:0;min-height:calc(100vh - 56px)}
+.nav-section{font-size:.7rem;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:.5rem .75rem;margin-top:.75rem}
+.nav-item{display:flex;align-items:center;gap:.625rem;padding:.625rem .75rem;border-radius:8px;font-size:.9rem;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:rgba(232,180,75,.12);color:var(--accent);font-weight:500}
+.main{flex:1;padding:1.75rem;overflow-y:auto;max-width:1100px}
+.page{display:none}.page.active{display:block}
+.page-title{font-size:1.5rem;font-weight:600;margin-bottom:1.5rem}
+.page-title span{color:var(--accent)}
+.grid{display:grid;gap:1rem}.grid-2{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(3,1fr)}.grid-4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.card-title{font-size:.8rem;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem}
+.stat-val{font-size:2rem;font-weight:700;line-height:1}
+.stat-sub{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+.stat-green{color:var(--green)}.stat-accent{color:var(--accent)}.stat-blue{color:var(--blue)}
+.btn{padding:.6rem 1.25rem;border-radius:var(--radius);font-size:.9rem;font-weight:500;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
+.btn-gold{background:var(--accent);color:#0a0f1a}.btn-green{background:var(--green);color:#fff}.btn-red{background:var(--red);color:#fff}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:.4rem .875rem;font-size:.8rem}.btn:disabled{opacity:.5;cursor:not-allowed}
+.input-group{margin-bottom:1rem}
+.input-group label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:.375rem;font-weight:500}
+.input-group input{width:100%;padding:.6rem .875rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.9rem;outline:none}
+.input-group input:focus{border-color:var(--accent)}
+.input-group .hint{font-size:.75rem;color:var(--muted);margin-top:.3rem}
+.badge{display:inline-block;font-size:.75rem;font-weight:500;padding:2px 8px;border-radius:20px}
+.badge-green{background:rgba(16,185,129,.15);color:var(--green)}.badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-amber{background:rgba(232,180,75,.15);color:var(--accent)}.badge-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+.badge-muted{background:var(--bg3);color:var(--muted)}
+.table{width:100%;border-collapse:collapse}
+.table th{font-size:.75rem;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:.625rem 1rem;text-align:left;border-bottom:1px solid var(--border)}
+.table td{padding:.875rem 1rem;border-bottom:1px solid var(--border);font-size:.9rem;vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.alert{padding:.875rem 1rem;border-radius:var(--radius);font-size:.875rem;margin-bottom:1rem}
+.alert-info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93c5fd}
+.alert-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7}
+.alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.progress-feed{max-height:280px;overflow-y:auto;font-family:monospace;font-size:.8rem;background:var(--bg3);border-radius:8px;padding:.875rem}
+.progress-feed .entry{padding:3px 0;color:var(--muted);border-bottom:1px solid var(--border)}
+.progress-feed .entry .ts{color:#374151;margin-right:.5rem}
+.progress-feed .entry span{color:var(--text)}
+.key-row{display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:end;margin-bottom:1rem}
+.key-status{display:flex;align-items:center;gap:.5rem;font-size:.8rem;padding:.6rem .875rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}.dot-green{background:var(--green)}.dot-red{background:#374151}
+.automation-control{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem}
+.automation-big{font-size:3rem;margin-bottom:.5rem}
+.automation-title{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
+.automation-sub{color:var(--muted);font-size:.9rem;margin-bottom:1.5rem}
+.automation-btns{display:flex;gap:.875rem;justify-content:center;flex-wrap:wrap}
+.yt-connect-card{background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.05));border:1px solid rgba(239,68,68,.3);border-radius:16px;padding:1.75rem;display:flex;align-items:center;gap:1.25rem;margin-bottom:1.25rem}
+.yt-connect-card.connected{background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(16,185,129,.05));border-color:rgba(16,185,129,.3)}
+.yt-icon{font-size:2.5rem;flex-shrink:0}
+.yt-info{flex:1}.yt-info h3{font-size:1.1rem;font-weight:600;margin-bottom:.25rem}.yt-info p{font-size:.875rem;color:var(--muted)}
+.revenue-highlight{background:linear-gradient(135deg,rgba(232,180,75,.15),rgba(232,180,75,.05));border:1px solid rgba(232,180,75,.3);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem}
+.revenue-amount{font-size:3rem;font-weight:700;color:var(--accent)}
+.video-title-cell .title{font-size:.875rem;font-weight:500;line-height:1.3;margin-bottom:.25rem}
+.video-title-cell .url{font-size:.75rem;color:var(--blue)}
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1.25rem;font-size:.875rem;z-index:9999;display:none;max-width:340px;box-shadow:var(--shadow)}
+#toast.show{display:block}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">WealthLens</div>
+    <div class="login-sub">YouTube Automation Dashboard</div>
+    <input type="password" id="pw-input" placeholder="Enter password">
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="login-err" style="display:none"></div>
+    <div class="default-pw">Default password: <strong>admin123</strong></div>
+  </div>
+</div>
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">WealthLens</div>
+    <div class="topbar-status" id="topbar-status">Idle</div>
+    <button class="topbar-btn" onclick="loadPage('logs')">Logs</button>
+    <button class="topbar-btn" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="nav-section">Main</div>
+      <div class="nav-item active" onclick="loadPage('dashboard')" data-page="dashboard">Dashboard</div>
+      <div class="nav-item" onclick="loadPage('automation')" data-page="automation">Automation</div>
+      <div class="nav-item" onclick="loadPage('videos')" data-page="videos">Videos</div>
+      <div class="nav-section">Insights</div>
+      <div class="nav-item" onclick="loadPage('analytics')" data-page="analytics">Analytics</div>
+      <div class="nav-item" onclick="loadPage('revenue')" data-page="revenue">Revenue</div>
+      <div class="nav-section">Settings</div>
+      <div class="nav-item" onclick="loadPage('apikeys')" data-page="apikeys">API Keys</div>
+      <div class="nav-item" onclick="loadPage('settings')" data-page="settings">Settings</div>
+    </nav>
+    <main class="main">
+      <div id="page-dashboard" class="page">
+        <div class="page-title">Dashboard <span>Overview</span></div>
+        <div class="grid grid-4">
+          <div class="card"><div class="card-title">Total Videos</div><div class="stat-val stat-accent" id="stat-total">0</div><div class="stat-sub">Generated</div></div>
+          <div class="card"><div class="card-title">Published</div><div class="stat-val stat-green" id="stat-pub">0</div><div class="stat-sub">On YouTube</div></div>
+          <div class="card"><div class="card-title">Subscribers</div><div class="stat-val stat-blue" id="stat-subs">0</div><div class="stat-sub">Channel total</div></div>
+          <div class="card"><div class="card-title">Est. Revenue</div><div class="stat-val stat-accent" id="stat-rev">$0</div><div class="stat-sub">All time</div></div>
+        </div>
+        <div class="grid grid-2" style="margin-top:1rem">
+          <div class="card"><div class="card-title">Pipeline Status</div><div id="dash-status" style="font-size:.9rem;color:var(--muted);margin-bottom:.875rem">Idle</div><div class="progress-feed" id="dash-progress"></div></div>
+          <div class="card"><div class="card-title">Recent Videos</div><div id="dash-recent">No videos yet</div></div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <div class="card-title" style="margin-bottom:1rem">Quick Actions</div>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+            <button class="btn btn-gold" onclick="runNow()">Run Pipeline Now</button>
+            <button class="btn btn-outline" onclick="loadPage('automation')">Automation</button>
+            <button class="btn btn-outline" onclick="loadPage('apikeys')">API Keys</button>
+            <button class="btn btn-outline" onclick="loadPage('videos')">All Videos</button>
+          </div>
+        </div>
+      </div>
+      <div id="page-automation" class="page">
+        <div class="page-title">Automation <span>Control</span></div>
+        <div class="automation-control">
+          <div class="automation-big" id="auto-icon">⏸</div>
+          <div class="automation-title" id="auto-title">Automation Paused</div>
+          <div class="automation-sub" id="auto-sub">Start automation to upload videos automatically</div>
+          <div class="automation-btns">
+            <button class="btn btn-green" id="btn-start" onclick="startAuto()">Start Automation</button>
+            <button class="btn btn-red" id="btn-stop" onclick="stopAuto()" style="display:none">Stop Automation</button>
+            <button class="btn btn-gold" onclick="runNow()">Run Once Now</button>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div class="card"><div class="card-title" style="margin-bottom:1rem">Live Status</div><div id="auto-status" style="font-size:.9rem;color:var(--muted);margin-bottom:.875rem">Idle</div><div class="progress-feed" id="auto-progress"></div></div>
+          <div class="card"><div class="card-title" style="margin-bottom:1rem">Schedule</div><div id="auto-schedule" style="font-size:.9rem;color:var(--muted)">Loading...</div></div>
+        </div>
+      </div>
+      <div id="page-videos" class="page">
+        <div class="page-title">Video <span>History</span></div>
+        <div class="card"><div style="overflow-x:auto"><table class="table"><thead><tr><th>Title</th><th>Status</th><th>Scheduled</th><th>Link</th><th>Created</th></tr></thead><tbody id="videos-tbody"><tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">No videos yet.</td></tr></tbody></table></div></div>
+      </div>
+      <div id="page-analytics" class="page">
+        <div class="page-title">Analytics <span>Overview</span></div>
+        <div class="grid grid-3">
+          <div class="card"><div class="card-title">Total Views</div><div class="stat-val stat-accent" id="an-views">0</div></div>
+          <div class="card"><div class="card-title">Subscribers</div><div class="stat-val stat-green" id="an-subs">0</div></div>
+          <div class="card"><div class="card-title">Videos</div><div class="stat-val stat-blue" id="an-vids">0</div></div>
+        </div>
+        <div class="card" style="margin-top:1rem"><div class="card-title" style="margin-bottom:1rem">Video Performance</div><table class="table"><thead><tr><th>Video</th><th>Views</th><th>Likes</th><th>Comments</th></tr></thead><tbody id="analytics-tbody"><tr><td colspan="4" style="color:var(--muted);text-align:center;padding:2rem">Connect YouTube to see analytics</td></tr></tbody></table></div>
+        <div class="card" style="margin-top:1rem"><div class="card-title" style="margin-bottom:1rem">Views Chart</div><div style="position:relative;height:300px"><canvas id="views-chart"></canvas></div></div>
+      </div>
+      <div id="page-revenue" class="page">
+        <div class="page-title">Revenue <span>Tracker</span></div>
+        <div class="revenue-highlight"><div class="revenue-amount" id="rev-total">$0.00</div><div style="color:var(--muted);margin-top:.25rem">Estimated revenue at $18 RPM</div></div>
+        <div class="grid grid-3" style="margin-bottom:1rem">
+          <div class="card"><div class="card-title">Total Views</div><div class="stat-val stat-blue" id="rev-views">0</div></div>
+          <div class="card"><div class="card-title">Est. RPM</div><div class="stat-val stat-accent">$18</div></div>
+          <div class="card"><div class="card-title">6-Month Forecast</div><div class="stat-val stat-green" id="rev-forecast">$0</div></div>
+        </div>
+        <div class="card"><div class="card-title" style="margin-bottom:.875rem">Forecast Chart</div><div style="position:relative;height:260px"><canvas id="rev-chart"></canvas></div></div>
+      </div>
+      <div id="page-apikeys" class="page">
+        <div class="page-title">API Keys <span>Setup</span></div>
+        <div id="apikeys-alert"></div>
+        <div id="yt-card" class="yt-connect-card">
+          <div class="yt-icon">▶️</div>
+          <div class="yt-info"><h3>YouTube Account</h3><p id="yt-status-text">Not connected</p></div>
+          <button class="btn btn-outline" id="yt-btn" onclick="connectYT()">Connect YouTube</button>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1.25rem">YouTube OAuth</div>
+          <div class="alert alert-info" style="margin-bottom:1rem">Get from <a href="https://console.cloud.google.com" target="_blank" style="color:var(--blue)">console.cloud.google.com</a> — Enable YouTube Data API v3 — Create OAuth Client ID (Web app) — Add redirect URI: your app URL + /api/youtube/callback</div>
+          <div class="key-row"><div class="input-group" style="margin:0"><label>YouTube Client ID</label><input type="password" id="key-yt-id" placeholder="Client ID"></div><div class="key-status"><span class="dot" id="dot-yt-id"></span><span id="prev-yt-id">Not set</span></div></div>
+          <div class="key-row"><div class="input-group" style="margin:0"><label>YouTube Client Secret</label><input type="password" id="key-yt-sec" placeholder="Client Secret"></div><div class="key-status"><span class="dot" id="dot-yt-sec"></span><span id="prev-yt-sec">Not set</span></div></div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <div class="card-title" style="margin-bottom:1.25rem">Free API Keys</div>
+          <div class="key-row"><div class="input-group" style="margin:0"><label>Groq API Key — <a href="https://console.groq.com" target="_blank" style="color:var(--blue)">Get free</a></label><input type="password" id="key-groq" placeholder="gsk_..."></div><div class="key-status"><span class="dot" id="dot-groq"></span><span id="prev-groq">Not set</span></div></div>
+          <div class="key-row"><div class="input-group" style="margin:0"><label>Unreal Speech — <a href="https://unrealspeech.com" target="_blank" style="color:var(--blue)">Get free</a></label><input type="password" id="key-tts" placeholder="API key"></div><div class="key-status"><span class="dot" id="dot-tts"></span><span id="prev-tts">Not set</span></div></div>
+          <div class="key-row"><div class="input-group" style="margin:0"><label>Pexels — <a href="https://www.pexels.com/api/" target="_blank" style="color:var(--blue)">Get free</a></label><input type="password" id="key-pexels" placeholder="API key"></div><div class="key-status"><span class="dot" id="dot-pexels"></span><span id="prev-pexels">Not set</span></div></div>
+          <div class="key-row"><div class="input-group" style="margin:0"><label>Creatomate — <a href="https://creatomate.com" target="_blank" style="color:var(--blue)">Get free (100/mo)</a></label><input type="password" id="key-creatomate" placeholder="API key"></div><div class="key-status"><span class="dot" id="dot-creatomate"></span><span id="prev-creatomate">Not set</span></div></div>
+          <div style="margin-top:1.25rem"><button class="btn btn-gold" onclick="saveKeys()">Save All Keys</button></div>
+        </div>
+      </div>
+      <div id="page-settings" class="page">
+        <div class="page-title">Channel <span>Settings</span></div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1.25rem">Upload Schedule</div>
+          <div class="input-group"><label>Upload Days</label><input type="text" id="set-days" placeholder="tuesday,friday"><div class="hint">Comma-separated days</div></div>
+          <div class="input-group"><label>Upload Time (EST)</label><input type="time" id="set-time"></div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <div class="card-title" style="margin-bottom:1.25rem">Voice</div>
+          <div class="input-group"><label>TTS Voice</label><input type="text" id="set-voice" placeholder="Dan"><div class="hint">Dan, Will, Scarlett, Liv, Amy</div></div>
+          <div class="input-group" style="display:flex;align-items:center;gap:.75rem"><input type="checkbox" id="set-autopub" style="width:auto"><label for="set-autopub" style="margin:0">Auto-publish publicly</label></div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <div class="card-title" style="margin-bottom:1.25rem">Security</div>
+          <div class="input-group"><label>New Password</label><input type="password" id="set-pw" placeholder="Leave blank to keep current"></div>
+        </div>
+        <button class="btn btn-gold" onclick="saveSettings()" style="margin-top:1rem">Save Settings</button>
+      </div>
+      <div id="page-logs" class="page">
+        <div class="page-title">System <span>Logs</span></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><div class="card-title">Activity</div><button class="btn btn-sm btn-outline" onclick="loadPage('logs')">Refresh</button></div><div class="progress-feed" id="logs-feed" style="max-height:500px"></div></div>
+      </div>
+    </main>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+let currentPage='dashboard',pollInterval=null,vChart=null,rChart=null;
+async function doLogin(){
+  const pw=document.getElementById('pw-input').value;
+  if(!pw)return;
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(d.ok)showApp();
+    else{const e=document.getElementById('login-err');e.textContent='Wrong password';e.style.display='block';}
+  }catch{const e=document.getElementById('login-err');e.textContent='Connection error';e.style.display='block';}
+}
+document.getElementById('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+async function doLogout(){await fetch('/api/logout',{method:'POST'});document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';clearInterval(pollInterval);}
+async function checkAuth(){try{const r=await fetch('/api/auth-check');const d=await r.json();if(d.authenticated)showApp();}catch{}}
+function showApp(){document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='flex';loadPage('dashboard');pollInterval=setInterval(doPoll,5000);const p=new URLSearchParams(window.location.search);if(p.get('connected')==='youtube'){toast('YouTube connected!','success');loadPage('apikeys');}if(p.get('error')==='youtube'){toast('YouTube connection failed','error');loadPage('apikeys');}window.history.replaceState({},'','/');}
+function loadPage(page){
+  currentPage=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el=document.getElementById('page-'+page);if(el)el.classList.add('active');
+  const nav=document.querySelector('[data-page="'+page+'"]');if(nav)nav.classList.add('active');
+  if(page==='dashboard')loadDash();
+  if(page==='automation')loadAutoPage();
+  if(page==='videos')loadVideos();
+  if(page==='analytics')loadAnalytics();
+  if(page==='revenue')loadRevenue();
+  if(page==='apikeys')loadKeys();
+  if(page==='settings')loadSettings();
+  if(page==='logs')loadLogs();
+}
+async function loadDash(){
+  const[rev,status]=await Promise.all([fetch('/api/revenue').then(r=>r.json()).catch(()=>null),fetch('/api/automation/status').then(r=>r.json()).catch(()=>null)]);
+  if(rev?.ok){document.getElementById('stat-total').textContent=rev.total_videos||0;document.getElementById('stat-pub').textContent=rev.published_videos||0;document.getElementById('stat-rev').textContent='$'+(rev.estimated_revenue||0).toFixed(2);}
+  try{const an=await fetch('/api/analytics').then(r=>r.json());document.getElementById('stat-subs').textContent=fmt(an.channel?.subscribers||0);}catch{}
+  if(status)updateStatus(status);
+  const rv=await fetch('/api/videos').then(r=>r.json()).catch(()=>null);
+  if(rv?.videos?.length){document.getElementById('dash-recent').innerHTML=rv.videos.slice(0,4).map(v=>'<div style="padding:.5rem 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between"><div style="font-size:.875rem">'+(v.final_title||v.title||'Untitled').slice(0,50)+'</div><span class="badge '+sb(v.status)+'">'+v.status+'</span></div>').join('');}
+}
+async function loadAutoPage(){
+  const r=await fetch('/api/automation/status').then(r=>r.json()).catch(()=>null);if(r)updateAutoUI(r);
+  const cfg=await fetch('/api/config').then(r=>r.json()).catch(()=>null);
+  if(cfg)document.getElementById('auto-schedule').innerHTML='<b>Days:</b> '+cfg.schedule_days+'<br><b>Time:</b> '+cfg.schedule_time+' EST<br><b>Auto-publish:</b> '+(cfg.auto_publish?'Yes':'No')+'<br><a href="#" onclick="loadPage('settings');return false" style="color:var(--blue)">Edit in Settings</a>';
+}
+function updateAutoUI(r){
+  const a=r.automation_active;
+  document.getElementById('auto-icon').textContent=a?'▶':'⏸';
+  document.getElementById('auto-title').textContent=a?'Automation Active':'Automation Paused';
+  document.getElementById('auto-sub').textContent=a?'Running automatically.':'Start automation to run on schedule.';
+  document.getElementById('btn-start').style.display=a?'none':'';
+  document.getElementById('btn-stop').style.display=a?'':'none';
+  document.getElementById('auto-status').textContent=r.current_status||'Idle';
+  const p=document.getElementById('auto-progress');
+  if(r.progress?.length)p.innerHTML=r.progress.map(x=>'<div class="entry"><span class="ts">'+x.ts?.slice(11,19)+'</span><span>'+x.msg+'</span></div>').join('');
+}
+function updateStatus(r){
+  const tb=document.getElementById('topbar-status');
+  tb.textContent=r.pipeline_running?'Running...':(r.automation_active?'Active':'Idle');
+  tb.className='topbar-status '+(r.pipeline_running?'running':(r.automation_active?'active':''));
+  const dp=document.getElementById('dash-status');if(dp)dp.textContent=r.current_status||'Idle';
+  const f=document.getElementById('dash-progress');if(f&&r.progress?.length)f.innerHTML=r.progress.map(x=>'<div class="entry"><span class="ts">'+x.ts?.slice(11,19)+'</span><span>'+x.msg+'</span></div>').join('');
+}
+async function doPoll(){const r=await fetch('/api/automation/status').then(r=>r.json()).catch(()=>null);if(!r)return;updateStatus(r);if(currentPage==='automation')updateAutoUI(r);}
+async function startAuto(){const r=await fetch('/api/automation/start',{method:'POST'}).then(r=>r.json());toast(r.message,'success');loadAutoPage();}
+async function stopAuto(){const r=await fetch('/api/automation/stop',{method:'POST'}).then(r=>r.json());toast(r.message,'warn');loadAutoPage();}
+async function runNow(){const r=await fetch('/api/automation/run-now',{method:'POST'}).then(r=>r.json()).catch(e=>({error:e.message}));if(r.error)toast(r.error,'error');else toast('Pipeline started!','success');}
+async function loadVideos(){
+  const r=await fetch('/api/videos').then(r=>r.json()).catch(()=>null);
+  const tb=document.getElementById('videos-tbody');
+  if(!r?.videos?.length){tb.innerHTML='<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">No videos yet.</td></tr>';return;}
+  tb.innerHTML=r.videos.map(v=>'<tr><td class="video-title-cell"><div class="title">'+(v.final_title||v.title||'Untitled').slice(0,60)+'</div>'+(v.youtube_url?'<a class="url" href="'+v.youtube_url+'" target="_blank">Watch</a>':'')+'</td><td><span class="badge '+sb(v.status)+'">'+v.status+'</span></td><td style="font-size:.8rem;color:var(--muted)">'+(v.scheduled_at?fd(v.scheduled_at):'—')+'</td><td>'+(v.youtube_url?'<a href="'+v.youtube_url+'" target="_blank" class="btn btn-sm btn-outline">Open</a>':'—')+'</td><td style="font-size:.8rem;color:var(--muted)">'+fd(v.started_at)+'</td></tr>').join('');
+}
+async function loadAnalytics(){
+  const r=await fetch('/api/analytics').then(r=>r.json()).catch(()=>null);if(!r?.ok)return;
+  if(r.channel){document.getElementById('an-views').textContent=fmt(r.channel.total_views);document.getElementById('an-subs').textContent=fmt(r.channel.subscribers);document.getElementById('an-vids').textContent=fmt(r.channel.total_videos);}
+  const tb=document.getElementById('analytics-tbody');
+  if(r.stats?.length){
+    tb.innerHTML=r.stats.map(s=>'<tr><td style="font-size:.875rem">'+(s.title||'').slice(0,50)+'</td><td style="color:var(--accent);font-weight:600">'+fmt(s.views)+'</td><td style="color:var(--green)">'+fmt(s.likes)+'</td><td>'+fmt(s.comments)+'</td></tr>').join('');
+    if(vChart)vChart.destroy();
+    vChart=new Chart(document.getElementById('views-chart'),{type:'bar',data:{labels:r.stats.map(s=>(s.title||'').slice(0,20)),datasets:[{label:'Views',data:r.stats.map(s=>s.views),backgroundColor:'rgba(232,180,75,.7)',borderColor:'#e8b44b',borderWidth:1,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}}}}}); }
+}
+async function loadRevenue(){
+  const r=await fetch('/api/revenue').then(r=>r.json()).catch(()=>null);if(!r?.ok)return;
+  document.getElementById('rev-total').textContent='$'+r.estimated_revenue.toFixed(2);
+  document.getElementById('rev-views').textContent=fmt(r.total_views);
+  document.getElementById('rev-forecast').textContent='$'+r.six_month_forecast.toFixed(2);
+  const base=r.monthly_estimate||0;
+  const proj=['M1','M2','M3','M4','M5','M6'].map((_,i)=>+(base*Math.pow(1.3,i)).toFixed(2));
+  if(rChart)rChart.destroy();
+  rChart=new Chart(document.getElementById('rev-chart'),{type:'line',data:{labels:['M1','M2','M3','M4','M5','M6'],datasets:[{label:'Revenue',data:proj,borderColor:'#e8b44b',backgroundColor:'rgba(232,180,75,.1)',fill:true,tension:.4,pointBackgroundColor:'#e8b44b'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#94a3b8',callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+async function loadKeys(){
+  const r=await fetch('/api/config').then(d=>d.json()).catch(()=>null);if(!r)return;
+  const yc=r.youtube_connected;
+  document.getElementById('yt-card').className='yt-connect-card'+(yc?' connected':'');
+  document.getElementById('yt-status-text').textContent=yc?'Connected: '+r.youtube_channel:'Not connected';
+  document.getElementById('yt-btn').textContent=yc?'Disconnect':'Connect YouTube';
+  document.getElementById('yt-btn').onclick=yc?disconnectYT:connectYT;
+  setDot('groq',r.groq_key_set,r.groq_preview);setDot('tts',r.unrealspeech_set,r.unrealspeech_preview);
+  setDot('pexels',r.pexels_set,r.pexels_preview);setDot('creatomate',r.creatomate_set,r.creatomate_preview);
+  setDot('yt-id',r.youtube_client_id_set,r.youtube_client_id_set?'Set':'Not set');
+  setDot('yt-sec',r.youtube_client_id_set,r.youtube_client_id_set?'Set':'Not set');
+}
+function setDot(id,set,preview){const d=document.getElementById('dot-'+id);const p=document.getElementById('prev-'+id);if(d)d.className='dot '+(set?'dot-green':'dot-red');if(p)p.textContent=set?preview:'Not set';}
+async function saveKeys(){
+  const body={};
+  [['key-groq','groq_api_key'],['key-tts','unrealspeech_api_key'],['key-pexels','pexels_api_key'],['key-creatomate','creatomate_api_key'],['key-yt-id','youtube_client_id'],['key-yt-sec','youtube_client_secret']]
+  .forEach(([el,k])=>{const v=document.getElementById(el)?.value?.trim();if(v)body[k]=v;});
+  if(!Object.keys(body).length){toast('No keys entered','warn');return;}
+  const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+  if(r.ok){toast('Keys saved!','success');loadKeys();}else toast(r.error,'error');
+}
+async function connectYT(){const r=await fetch('/api/youtube/connect').then(r=>r.json()).catch(()=>null);if(r?.url)window.location.href=r.url;else if(r?.error)toast(r.error,'error');}
+async function disconnectYT(){await fetch('/api/youtube/disconnect',{method:'POST'});toast('Disconnected','warn');loadKeys();}
+async function loadSettings(){
+  const r=await fetch('/api/config').then(d=>d.json()).catch(()=>null);if(!r)return;
+  const s=document.getElementById('set-days');if(s)s.value=r.schedule_days||'tuesday,friday';
+  const t=document.getElementById('set-time');if(t)t.value=r.schedule_time||'09:00';
+  const v=document.getElementById('set-voice');if(v)v.value=r.tts_voice||'Dan';
+  const p=document.getElementById('set-autopub');if(p)p.checked=r.auto_publish!==false;
+}
+async function saveSettings(){
+  const body={schedule_days:document.getElementById('set-days')?.value,schedule_time:document.getElementById('set-time')?.value,tts_voice:document.getElementById('set-voice')?.value,auto_publish:document.getElementById('set-autopub')?.checked};
+  const pw=document.getElementById('set-pw')?.value?.trim();if(pw)body.admin_password=pw;
+  const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+  if(r.ok)toast('Settings saved!','success');else toast(r.error,'error');
+}
+async function loadLogs(){
+  const r=await fetch('/api/logs').then(r=>r.json()).catch(()=>null);
+  const el=document.getElementById('logs-feed');
+  if(!r?.logs?.length){el.innerHTML='<div style="color:var(--muted)">No logs yet</div>';return;}
+  el.innerHTML=r.logs.map(l=>'<div class="entry"><span class="ts">'+l.ts?.slice(0,19).replace('T',' ')+'</span><span style="color:'+(l.level==='error'?'var(--red)':l.level==='warn'?'var(--accent)':'var(--text)'"+'>['+l.level?.toUpperCase()+'] '+l.msg+'</span></div>').join('');
+}
+function toast(msg,type='info'){const el=document.getElementById('toast');el.textContent=msg;el.style.borderColor=type==='success'?'rgba(16,185,129,.5)':type==='error'?'rgba(239,68,68,.5)':type==='warn'?'rgba(232,180,75,.5)':'var(--border)';el.classList.add('show');setTimeout(()=>el.classList.remove('show'),4000);}
+function fmt(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return String(n||0);}
+function fd(s){if(!s)return'—';try{return new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch{return s.slice(0,10);}}
+function sb(s){return{published:'badge-green',scheduled:'badge-blue',running:'badge-amber',failed:'badge-red'}[s]||'badge-muted';}
+checkAuth();
+</script>
+</body>
+</html>
